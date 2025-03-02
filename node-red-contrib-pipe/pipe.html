@@ -1,0 +1,136 @@
+<script type="text/javascript">
+  RED.nodes.registerType("pipe", {
+    category: "Custom",
+    color: "#A6BBCF",
+    defaults: {
+      name: { value: "" },
+      length: { value: "0.1", validate: RED.validators.number() },
+      radius: { value: "0.01", validate: RED.validators.number() },
+      particle_count: { value: "1000", validate: RED.validators.number() },
+      connections: { value: "" },
+      receivers: { value: [] }, // Make sure to initialize as an array
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: "file.svg",
+    label: function () {
+      return this.name || "Pipe";
+    },
+    oneditprepare: function () {
+      // Create a local copy of the receivers array for editing
+      var receivers = JSON.parse(JSON.stringify(this.receivers || []));
+
+      function refreshReceiversUI() {
+        $("#node-receiver-list").empty();
+        receivers.forEach(function (receiver, index) {
+          var row = $('<div class="form-row receiver-row"></div>').appendTo(
+            "#node-receiver-list"
+          );
+
+          // Receiver Type
+          $("<label style='width:60px;'>Type</label>").appendTo(row);
+          var typeSelect = $(
+            "<select style='width:120px;margin-right:10px;'></select>"
+          ).appendTo(row);
+          ["Type1", "Type2", "Type3"].forEach(function (type) {
+            $("<option></option>").text(type).val(type).appendTo(typeSelect);
+          });
+          typeSelect.val(receiver.type || "Type1");
+
+          // Property 1 (example)
+          $("<label style='width:80px;'>Property 1</label>").appendTo(row);
+          var property1Input = $(
+            '<input type="text" style="width:120px;margin-right:10px;">'
+          )
+            .val(receiver.property1 || "")
+            .appendTo(row);
+
+          // Delete Button
+          var deleteButton = $(
+            "<button class='red-ui-button'><i class='fa fa-trash'></i></button>"
+          ).appendTo(row);
+
+          // Set up event handlers
+          typeSelect.on("change", function () {
+            receiver.type = $(this).val();
+          });
+
+          property1Input.on("change", function () {
+            receiver.property1 = $(this).val();
+          });
+
+          deleteButton.on("click", function (e) {
+            e.preventDefault();
+            receivers.splice(index, 1);
+            refreshReceiversUI();
+          });
+        });
+      }
+
+      $("#node-add-receiver").on("click", function (e) {
+        e.preventDefault();
+        receivers.push({ type: "Type1", property1: "" });
+        refreshReceiversUI();
+      });
+
+      refreshReceiversUI();
+    },
+    oneditsave: function () {
+      // This is the critical part - gather all receiver data from UI
+      var receivers = [];
+      $(".receiver-row").each(function () {
+        var row = $(this);
+        var type = row.find("select").val();
+        var property1 = row.find("input[type='text']").val();
+
+        receivers.push({
+          type: type,
+          property1: property1,
+        });
+      });
+
+      // Set the receivers property on the node
+      this.receivers = receivers;
+    },
+  });
+</script>
+
+<script type="text/html" data-template-name="pipe">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-length"
+      ><i class="fa fa-arrows-alt"></i> Length</label
+    >
+    <input type="text" id="node-input-length" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-radius"><i class="fa fa-circle"></i> Radius</label>
+    <input type="text" id="node-input-radius" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-particle_count"
+      ><i class="fa fa-cubes"></i> Particles</label
+    >
+    <input type="text" id="node-input-particle_count" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-connections"
+      ><i class="fa fa-random"></i> Connections</label
+    >
+    <input type="text" id="node-input-connections" />
+  </div>
+
+  <hr />
+  <div class="form-row">
+    <label><i class="fa fa-list"></i> Receivers</label>
+  </div>
+  <div id="node-receiver-list"></div>
+  <div class="form-row">
+    <button id="node-add-receiver" class="red-ui-button">
+      <i class="fa fa-plus"></i> Add Receiver
+    </button>
+  </div>
+</script>

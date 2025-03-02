@@ -1,0 +1,11 @@
+{
+    "name": "node-red-contrib-pipe",
+    "version": "0.1.0",
+    "description": "A custom Node-RED node for defining pipes",
+    "node-red": {
+        "nodes": {
+            "pipe": "pipe.js"
+        }
+    },
+    "dependencies": {}
+}
