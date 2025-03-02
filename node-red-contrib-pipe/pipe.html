@@ -8,7 +8,8 @@
       radius: { value: "0.01", validate: RED.validators.number() },
       particle_count: { value: "1000", validate: RED.validators.number() },
       connections: { value: "" },
-      receivers: { value: [] }, // Make sure to initialize as an array
+      receivers: { value: [] },
+      emitters: { value: [] }, // New property for emitters
     },
     inputs: 1,
     outputs: 1,
@@ -17,9 +18,51 @@
       return this.name || "Pipe";
     },
     oneditprepare: function () {
-      // Create a local copy of the receivers array for editing
+      // Create local copies of the arrays for editing
       var receivers = JSON.parse(JSON.stringify(this.receivers || []));
+      var emitters = JSON.parse(JSON.stringify(this.emitters || []));
 
+      // Define receiver types and their properties
+      var receiverTypes = {
+        "Trap (tangent)": ["length", "z"],
+        "Trap (affecting flow)": ["length", "z", "dent_size"],
+        "Ring type": ["z"],
+        "Sphere type": ["radius", "z", "r", "theta"],
+      };
+
+      // Define emitter properties
+      var emitterProperties = ["z", "r", "theta"];
+
+      // Create tabs
+      var tabs = RED.tabs.create({
+        id: "node-pipe-tabs",
+        onchange: function (tab) {
+          $("#node-pipe-tabs-content").children().hide();
+          $("#" + tab.id).show();
+        },
+      });
+
+      tabs.addTab({
+        id: "pipe-tab-general",
+        label: "General",
+      });
+
+      tabs.addTab({
+        id: "pipe-tab-receivers",
+        label: "Receivers",
+      });
+
+      tabs.addTab({
+        id: "pipe-tab-emitters",
+        label: "Emitters",
+      });
+
+      // Show the first tab (General) by default
+      setTimeout(function () {
+        tabs.activateTab("pipe-tab-general");
+      }, 100);
+
+      // RECEIVERS SECTION
       function refreshReceiversUI() {
         $("#node-receiver-list").empty();
         receivers.forEach(function (receiver, index) {
@@ -27,36 +70,55 @@
             "#node-receiver-list"
           );
 
+          // Add index label
+          $("<label style='width:30px;'>#" + (index + 1) + "</label>").appendTo(
+            row
+          );
+
           // Receiver Type
           $("<label style='width:60px;'>Type</label>").appendTo(row);
           var typeSelect = $(
-            "<select style='width:120px;margin-right:10px;'></select>"
+            "<select style='width:180px;margin-right:10px;' class='receiver-type'></select>"
           ).appendTo(row);
-          ["Type1", "Type2", "Type3"].forEach(function (type) {
+
+          Object.keys(receiverTypes).forEach(function (type) {
             $("<option></option>").text(type).val(type).appendTo(typeSelect);
           });
-          typeSelect.val(receiver.type || "Type1");
 
-          // Property 1 (example)
-          $("<label style='width:80px;'>Property 1</label>").appendTo(row);
-          var property1Input = $(
-            '<input type="text" style="width:120px;margin-right:10px;">'
-          )
-            .val(receiver.property1 || "")
-            .appendTo(row);
+          typeSelect.val(receiver.type || "Trap (tangent)");
+
+          // Create property container
+          var propertiesContainer = $(
+            '<div class="receiver-properties" style="margin-top:5px;margin-left:90px;display:block;"></div>'
+          ).appendTo(row);
+
+          // Add properties based on selected type
+          updateReceiverProperties(
+            propertiesContainer,
+            typeSelect.val(),
+            receiver
+          );
 
           // Delete Button
           var deleteButton = $(
-            "<button class='red-ui-button'><i class='fa fa-trash'></i></button>"
+            "<button class='red-ui-button' style='margin-left:10px;vertical-align:top;'><i class='fa fa-trash'></i></button>"
           ).appendTo(row);
 
           // Set up event handlers
           typeSelect.on("change", function () {
-            receiver.type = $(this).val();
-          });
+            var newType = $(this).val();
+            receiver.type = newType;
 
-          property1Input.on("change", function () {
-            receiver.property1 = $(this).val();
+            // Clear properties that don't belong to this type
+            var validProps = receiverTypes[newType];
+            Object.keys(receiver).forEach(function (key) {
+              if (key !== "type" && validProps.indexOf(key) === -1) {
+                delete receiver[key];
+              }
+            });
+
+            // Update properties UI
+            updateReceiverProperties(propertiesContainer, newType, receiver);
           });
 
           deleteButton.on("click", function (e) {
@@ -67,70 +129,252 @@
         });
       }
 
+      function updateReceiverProperties(container, type, receiver) {
+        container.empty();
+
+        // Get properties for this type
+        var properties = receiverTypes[type] || [];
+
+        // Create form elements for each property
+        properties.forEach(function (prop) {
+          var propRow = $('<div style="margin-bottom:5px;"></div>').appendTo(
+            container
+          );
+          $(
+            "<label style='width:100px;display:inline-block;'>" +
+              formatPropertyLabel(prop) +
+              "</label>"
+          ).appendTo(propRow);
+
+          var input = $(
+            '<input type="text" style="width:120px;" class="receiver-prop" data-prop="' +
+              prop +
+              '">'
+          ).appendTo(propRow);
+          input.val(receiver[prop] !== undefined ? receiver[prop] : "0");
+
+          // Set up change handler
+          input.on("change", function () {
+            receiver[prop] = $(this).val();
+          });
+        });
+      }
+
+      // EMITTERS SECTION
+      function refreshEmittersUI() {
+        $("#node-emitter-list").empty();
+        emitters.forEach(function (emitter, index) {
+          var row = $('<div class="form-row emitter-row"></div>').appendTo(
+            "#node-emitter-list"
+          );
+
+          // Add index label
+          $("<label style='width:30px;'>#" + (index + 1) + "</label>").appendTo(
+            row
+          );
+
+          // Create property container
+          var propertiesContainer = $(
+            '<div class="emitter-properties" style="display:inline-block;"></div>'
+          ).appendTo(row);
+
+          // Add properties
+          updateEmitterProperties(propertiesContainer, emitter);
+
+          // Delete Button
+          var deleteButton = $(
+            "<button class='red-ui-button' style='margin-left:10px;vertical-align:top;'><i class='fa fa-trash'></i></button>"
+          ).appendTo(row);
+
+          deleteButton.on("click", function (e) {
+            e.preventDefault();
+            emitters.splice(index, 1);
+            refreshEmittersUI();
+          });
+        });
+      }
+
+      function updateEmitterProperties(container, emitter) {
+        // Create form elements for each property
+        emitterProperties.forEach(function (prop) {
+          var propContainer = $(
+            '<div style="display:inline-block;margin-right:15px;"></div>'
+          ).appendTo(container);
+          $(
+            "<label style='width:80px;display:inline-block;'>" +
+              formatPropertyLabel(prop) +
+              "</label>"
+          ).appendTo(propContainer);
+
+          var input = $(
+            '<input type="text" style="width:80px;" class="emitter-prop" data-prop="' +
+              prop +
+              '">'
+          ).appendTo(propContainer);
+          input.val(emitter[prop] !== undefined ? emitter[prop] : "0");
+
+          // Set up change handler
+          input.on("change", function () {
+            emitter[prop] = $(this).val();
+          });
+        });
+      }
+
+      function formatPropertyLabel(prop) {
+        // Convert property names to more readable labels
+        switch (prop) {
+          case "z":
+            return "Z Position";
+          case "r":
+            return "R Value";
+          case "theta":
+            return "Theta";
+          case "dent_size":
+            return "Dent Size";
+          default:
+            return prop.charAt(0).toUpperCase() + prop.slice(1);
+        }
+      }
+
       $("#node-add-receiver").on("click", function (e) {
         e.preventDefault();
-        receivers.push({ type: "Type1", property1: "" });
+        // Default to Trap (tangent) type with default properties
+        receivers.push({
+          type: "Trap (tangent)",
+          length: "0.1",
+          z: "0",
+        });
         refreshReceiversUI();
       });
 
+      $("#node-add-emitter").on("click", function (e) {
+        e.preventDefault();
+        // Add new emitter with default properties
+        emitters.push({
+          z: "0",
+          r: "0",
+          theta: "0",
+        });
+        refreshEmittersUI();
+      });
+
       refreshReceiversUI();
+      refreshEmittersUI();
     },
     oneditsave: function () {
-      // This is the critical part - gather all receiver data from UI
+      // Gather all receiver data from UI
       var receivers = [];
       $(".receiver-row").each(function () {
         var row = $(this);
-        var type = row.find("select").val();
-        var property1 = row.find("input[type='text']").val();
+        var type = row.find("select.receiver-type").val();
 
-        receivers.push({
-          type: type,
-          property1: property1,
+        // Create receiver object with type
+        var receiver = { type: type };
+
+        // Add all properties based on inputs
+        row.find(".receiver-prop").each(function () {
+          var input = $(this);
+          var propName = input.data("prop");
+          receiver[propName] = input.val();
         });
+
+        receivers.push(receiver);
       });
 
-      // Set the receivers property on the node
+      // Gather all emitter data from UI
+      var emitters = [];
+      $(".emitter-row").each(function () {
+        var row = $(this);
+        var emitter = {};
+
+        // Add all properties based on inputs
+        row.find(".emitter-prop").each(function () {
+          var input = $(this);
+          var propName = input.data("prop");
+          emitter[propName] = input.val();
+        });
+
+        emitters.push(emitter);
+      });
+
+      // Set the properties on the node
       this.receivers = receivers;
+      this.emitters = emitters;
     },
   });
 </script>
 
 <script type="text/html" data-template-name="pipe">
   <div class="form-row">
-    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
-    <input type="text" id="node-input-name" />
-  </div>
-  <div class="form-row">
-    <label for="node-input-length"
-      ><i class="fa fa-arrows-alt"></i> Length</label
-    >
-    <input type="text" id="node-input-length" />
-  </div>
-  <div class="form-row">
-    <label for="node-input-radius"><i class="fa fa-circle"></i> Radius</label>
-    <input type="text" id="node-input-radius" />
-  </div>
-  <div class="form-row">
-    <label for="node-input-particle_count"
-      ><i class="fa fa-cubes"></i> Particles</label
-    >
-    <input type="text" id="node-input-particle_count" />
-  </div>
-  <div class="form-row">
-    <label for="node-input-connections"
-      ><i class="fa fa-random"></i> Connections</label
-    >
-    <input type="text" id="node-input-connections" />
+    <ul
+      style="background: #fff; min-width: 350px; margin-bottom: 20px;"
+      id="node-pipe-tabs"
+    ></ul>
   </div>
 
-  <hr />
-  <div class="form-row">
-    <label><i class="fa fa-list"></i> Receivers</label>
-  </div>
-  <div id="node-receiver-list"></div>
-  <div class="form-row">
-    <button id="node-add-receiver" class="red-ui-button">
-      <i class="fa fa-plus"></i> Add Receiver
-    </button>
+  <div id="node-pipe-tabs-content" style="min-height: 300px;">
+    <!-- General Tab -->
+    <div id="pipe-tab-general">
+      <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" />
+      </div>
+      <div class="form-row">
+        <label for="node-input-length"
+          ><i class="fa fa-arrows-alt"></i> Length</label
+        >
+        <input type="text" id="node-input-length" />
+      </div>
+      <div class="form-row">
+        <label for="node-input-radius"
+          ><i class="fa fa-circle"></i> Radius</label
+        >
+        <input type="text" id="node-input-radius" />
+      </div>
+      <div class="form-row">
+        <label for="node-input-particle_count"
+          ><i class="fa fa-cubes"></i> Particles</label
+        >
+        <input type="text" id="node-input-particle_count" />
+      </div>
+      <div class="form-row">
+        <label for="node-input-connections"
+          ><i class="fa fa-random"></i> Connections</label
+        >
+        <input type="text" id="node-input-connections" />
+      </div>
+    </div>
+
+    <!-- Receivers Tab -->
+    <div id="pipe-tab-receivers" style="display:none;">
+      <div class="form-row">
+        <label><i class="fa fa-sign-in"></i> Receivers</label>
+        <span style="margin-left: 10px; color: #888;"
+          >Configure the receivers for this pipe</span
+        >
+      </div>
+      <div id="node-receiver-list" style="margin-top: 10px;"></div>
+      <div class="form-row" style="margin-top:10px;">
+        <button id="node-add-receiver" class="red-ui-button">
+          <i class="fa fa-plus"></i> Add Receiver
+        </button>
+      </div>
+    </div>
+
+    <!-- Emitters Tab -->
+    <div id="pipe-tab-emitters" style="display:none;">
+      <div class="form-row">
+        <label><i class="fa fa-sign-out"></i> Emitters</label>
+        <span style="margin-left: 10px; color: #888;"
+          >Configure the emitters for this pipe</span
+        >
+      </div>
+      <div id="node-emitter-list" style="margin-top: 10px;"></div>
+      <div class="form-row" style="margin-top:10px;">
+        <button id="node-add-emitter" class="red-ui-button">
+          <i class="fa fa-plus"></i> Add Emitter
+        </button>
+      </div>
+    </div>
   </div>
 </script>

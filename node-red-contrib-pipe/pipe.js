@@ -1,11 +1,12 @@
-// Fixed pipe.js
+// Updated pipe.js with emitters support
 module.exports = function(RED) {
     function PipeNode(config) {
         RED.nodes.createNode(this, config);
         var node = this;
         
-        // Store the receivers configuration
+        // Store the configuration
         this.receivers = config.receivers || [];
+        this.emitters = config.emitters || [];
 
         node.on("input", function(msg) {
             msg.payload = {
@@ -14,7 +15,8 @@ module.exports = function(RED) {
                 radius: parseFloat(config.radius),
                 particle_count: parseInt(config.particle_count),
                 connections: config.connections ? config.connections.split(",") : [],
-                receivers: config.receivers || []
+                receivers: config.receivers || [],
+                emitters: config.emitters || []
             };
             node.send(msg);
         });
