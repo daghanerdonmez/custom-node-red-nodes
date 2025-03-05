@@ -6,10 +6,8 @@
       name: { value: "" },
       length: { value: "0.1", validate: RED.validators.number() },
       radius: { value: "0.01", validate: RED.validators.number() },
-      particle_count: { value: "1000", validate: RED.validators.number() },
-      connections: { value: "" },
       receivers: { value: [] },
-      emitters: { value: [] }, // New property for emitters
+      emitters: { value: [] },
     },
     inputs: 1,
     outputs: 1,
@@ -24,14 +22,20 @@
 
       // Define receiver types and their properties
       var receiverTypes = {
-        "Trap (tangent)": ["length", "z"],
-        "Trap (affecting flow)": ["length", "z", "dent_size"],
+        "Trap (tangent)": ["length", "radius", "theta", "delta_theta"],
+        "Trap (affecting flow)": [
+          "length",
+          "radius",
+          "theta",
+          "delta_theta",
+          "thickness",
+        ],
         "Ring type": ["z"],
         "Sphere type": ["radius", "z", "r", "theta"],
       };
 
       // Define emitter properties
-      var emitterProperties = ["z", "r", "theta"];
+      var emitterProperties = ["z", "r", "theta", "emitter_pattern"];
 
       // Create tabs
       var tabs = RED.tabs.create({
@@ -175,7 +179,7 @@
 
           // Create property container
           var propertiesContainer = $(
-            '<div class="emitter-properties" style="display:inline-block;"></div>'
+            '<div class="emitter-properties" style="display:block;"></div>'
           ).appendTo(row);
 
           // Add properties
@@ -198,20 +202,29 @@
         // Create form elements for each property
         emitterProperties.forEach(function (prop) {
           var propContainer = $(
-            '<div style="display:inline-block;margin-right:15px;"></div>'
+            '<div style="margin-bottom:10px;"></div>'
           ).appendTo(container);
+
           $(
-            "<label style='width:80px;display:inline-block;'>" +
+            "<label style='width:120px;display:inline-block;'>" +
               formatPropertyLabel(prop) +
               "</label>"
           ).appendTo(propContainer);
 
+          var inputType = prop === "emitter_pattern" ? "textarea" : "input";
           var input = $(
-            '<input type="text" style="width:80px;" class="emitter-prop" data-prop="' +
+            "<" +
+              inputType +
+              ' type="text" style="width:' +
+              (prop === "emitter_pattern" ? "400px" : "120px") +
+              ";" +
+              (prop === "emitter_pattern" ? "height:100px;" : "") +
+              '" class="emitter-prop" data-prop="' +
               prop +
               '">'
           ).appendTo(propContainer);
-          input.val(emitter[prop] !== undefined ? emitter[prop] : "0");
+
+          input.val(emitter[prop] !== undefined ? emitter[prop] : "");
 
           // Set up change handler
           input.on("change", function () {
@@ -229,8 +242,12 @@
             return "R Value";
           case "theta":
             return "Theta";
-          case "dent_size":
-            return "Dent Size";
+          case "delta_theta":
+            return "Delta Theta";
+          case "thickness":
+            return "Thickness";
+          case "emitter_pattern":
+            return "Emitter Pattern";
           default:
             return prop.charAt(0).toUpperCase() + prop.slice(1);
         }
@@ -242,7 +259,9 @@
         receivers.push({
           type: "Trap (tangent)",
           length: "0.1",
-          z: "0",
+          radius: "0.01",
+          theta: "0",
+          delta_theta: "0",
         });
         refreshReceiversUI();
       });
@@ -254,6 +273,7 @@
           z: "0",
           r: "0",
           theta: "0",
+          emitter_pattern: "",
         });
         refreshEmittersUI();
       });
@@ -330,18 +350,6 @@
           ><i class="fa fa-circle"></i> Radius</label
         >
         <input type="text" id="node-input-radius" />
-      </div>
-      <div class="form-row">
-        <label for="node-input-particle_count"
-          ><i class="fa fa-cubes"></i> Particles</label
-        >
-        <input type="text" id="node-input-particle_count" />
-      </div>
-      <div class="form-row">
-        <label for="node-input-connections"
-          ><i class="fa fa-random"></i> Connections</label
-        >
-        <input type="text" id="node-input-connections" />
       </div>
     </div>
 
