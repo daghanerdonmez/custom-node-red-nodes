@@ -1,0 +1,78 @@
+<script type="text/javascript">
+  RED.nodes.registerType("flow", {
+    category: "Custom",
+    color: "#87A980",
+    defaults: {
+      name: { value: "" },
+      flowRate: { value: "1.0", validate: RED.validators.number() },
+    },
+    inputs: 0,
+    outputs: 1,
+    icon: "font-awesome/fa-tint",
+    label: function () {
+      return this.name || "Flow";
+    },
+    button: {
+      toggle: "false",
+      onclick: function () {
+        var node = this;
+        $.ajax({
+          url: "flow/initiate/" + this.id,
+          type: "POST",
+          success: function (resp) {
+            RED.notify("Flow initiated", {
+              type: "success",
+              id: "flow-initiated",
+            });
+          },
+          error: function (jqXHR, textStatus, errorThrown) {
+            RED.notify("Flow initiation failed: " + textStatus, {
+              type: "error",
+              id: "flow-failed",
+            });
+          },
+        });
+      },
+    },
+    oneditprepare: function () {
+      // Nothing special needed for edit preparation
+    },
+  });
+</script>
+
+<script type="text/html" data-template-name="flow">
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Name" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-flowRate"
+      ><i class="fa fa-tint"></i> Flow Rate</label
+    >
+    <input type="text" id="node-input-flowRate" placeholder="1.0" />
+  </div>
+</script>
+
+<script type="text/html" data-help-name="flow">
+  <p>A node that acts as a flow source for pipe systems.</p>
+  <p>Click the button to initiate flow through connected pipe systems.</p>
+  <p>
+    Flow will be distributed proportionally to the fourth power of pipe radius.
+  </p>
+
+  <h3>Properties</h3>
+  <dl class="message-properties">
+    <dt>Name <span class="property-type">string</span></dt>
+    <dd>Name of the node shown in the editor</dd>
+    <dt>Flow Rate <span class="property-type">number</span></dt>
+    <dd>The rate of flow to be generated (default: 1.0)</dd>
+  </dl>
+
+  <h3>Outputs</h3>
+  <dl class="message-properties">
+    <dt>payload.flowCommand <span class="property-type">string</span></dt>
+    <dd>Command to initiate flow</dd>
+    <dt>payload.flowRate <span class="property-type">number</span></dt>
+    <dd>The flow rate to propagate through the system</dd>
+  </dl>
+</script>

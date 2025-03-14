@@ -6,12 +6,13 @@
       name: { value: "" },
       length: { value: "0.1", validate: RED.validators.number() },
       radius: { value: "0.01", validate: RED.validators.number() },
+      currentFlow: { value: 0 },
       receivers: { value: [] },
       emitters: { value: [] },
     },
     inputs: 1,
     outputs: 1,
-    icon: "file.svg",
+    icon: "font-awesome/fa-exchange",
     label: function () {
       return this.name || "Pipe";
     },
@@ -61,10 +62,18 @@
         label: "Emitters",
       });
 
+      tabs.addTab({
+        id: "pipe-tab-flow",
+        label: "Flow",
+      });
+
       // Show the first tab (General) by default
       setTimeout(function () {
         tabs.activateTab("pipe-tab-general");
       }, 100);
+
+      // Set current flow display in the input field
+      $("#node-input-currentFlow").val(this.currentFlow || "0");
 
       // RECEIVERS SECTION
       function refreshReceiversUI() {
@@ -317,6 +326,9 @@
         emitters.push(emitter);
       });
 
+      // Get the current flow value
+      this.currentFlow = parseFloat($("#node-input-currentFlow").val()) || 0;
+
       // Set the properties on the node
       this.receivers = receivers;
       this.emitters = emitters;
@@ -353,6 +365,20 @@
       </div>
     </div>
 
+    <!-- Flow Tab -->
+    <div id="pipe-tab-flow" style="display:none;">
+      <div class="form-row">
+        <label for="node-input-currentFlow"><i class="fa fa-tint"></i> Current Flow</label>
+        <input type="text" id="node-input-currentFlow" />
+      </div>
+      <div class="form-row">
+        <p>
+          This value is updated automatically during flow simulation and is
+          preserved during export/import.
+        </p>
+      </div>
+    </div>
+
     <!-- Receivers Tab -->
     <div id="pipe-tab-receivers" style="display:none;">
       <div class="form-row">
@@ -385,4 +411,39 @@
       </div>
     </div>
   </div>
+</script>
+
+<script type="text/html" data-help-name="pipe">
+  <p>A node that represents a pipe in a flow system.</p>
+  <p>Connected to Flow nodes and other Pipe nodes to model fluid flow.</p>
+
+  <h3>Properties</h3>
+  <dl class="message-properties">
+    <dt>Name <span class="property-type">string</span></dt>
+    <dd>Name of the node shown in the editor</dd>
+    <dt>Length <span class="property-type">number</span></dt>
+    <dd>Length of the pipe (in arbitrary units)</dd>
+    <dt>Radius <span class="property-type">number</span></dt>
+    <dd>
+      Radius of the pipe (in arbitrary units) - determines flow distribution
+    </dd>
+    <dt>Current Flow <span class="property-type">number</span></dt>
+    <dd>
+      The current flow rate through this pipe (preserved during export/import)
+    </dd>
+  </dl>
+
+  <h3>Inputs</h3>
+  <dl class="message-properties">
+    <dt>payload.flowCommand <span class="property-type">string</span></dt>
+    <dd>Command to control flow (initiateFlow, propagateFlow)</dd>
+    <dt>payload.flowRate <span class="property-type">number</span></dt>
+    <dd>The rate of flow being propagated</dd>
+  </dl>
+
+  <h3>Outputs</h3>
+  <dl class="message-properties">
+    <dt>payload <span class="property-type">object</span></dt>
+    <dd>Contains pipe properties and current flow information</dd>
+  </dl>
 </script>
