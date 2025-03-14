@@ -4,7 +4,8 @@
     "description": "A custom Node-RED node for defining pipes",
     "node-red": {
         "nodes": {
-            "pipe": "pipe.js"
+            "pipe": "pipe.js",
+            "flow": "flow.js"
         }
     },
     "dependencies": {}

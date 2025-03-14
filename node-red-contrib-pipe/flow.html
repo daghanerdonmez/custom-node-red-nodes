@@ -1,0 +1,66 @@
+<script type="text/javascript">
+    RED.nodes.registerType('flow', {
+        category: 'Custom',
+        color: '#87A980',
+        defaults: {
+            name: { value: "" },
+            flowValue: { value: 1, validate: RED.validators.number() }
+        },
+        inputs: 0,
+        outputs: 1,
+        icon: "font-awesome/fa-tint",
+        label: function() {
+            return this.name || "Flow";
+        },
+        button: {
+            onclick: function() {
+                var node = this;
+                $.ajax({
+                    url: "flow/" + this.id,
+                    type: "POST",
+                    success: function(resp) {
+                        RED.notify("Flow initiated", {type: "success", id: "flow"});
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        RED.notify("Error initiating flow: " + errorThrown, {type: "error", id: "flow"});
+                    }
+                });
+            }
+        },
+        oneditprepare: function() {
+            $("#node-input-flowValue").spinner({
+                min: 0.1,
+                step: 0.1
+            });
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="flow">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-flowValue"><i class="fa fa-tint"></i> Flow Value</label>
+        <input type="text" id="node-input-flowValue" placeholder="1">
+    </div>
+</script>
+
+<script type="text/html" data-help-name="flow">
+    <p>A node that initiates flow in connected pipe nodes.</p>
+    <p>This node acts as a flow source that can be connected to pipe nodes.</p>
+    <p>When clicked, it sends a flow command to all connected pipe nodes.</p>
+    <h3>Properties</h3>
+    <dl class="message-properties">
+        <dt>Name <span class="property-type">string</span></dt>
+        <dd>Name of the flow node</dd>
+        <dt>Flow Value <span class="property-type">number</span></dt>
+        <dd>The flow value to be propagated through the pipe network</dd>
+    </dl>
+    <h3>Outputs</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">object</span></dt>
+        <dd>The flow command to be sent to connected pipe nodes</dd>
+    </dl>
+</script>
