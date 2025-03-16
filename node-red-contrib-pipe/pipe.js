@@ -9,135 +9,151 @@ module.exports = function(RED) {
         this.radius = parseFloat(config.radius) || 0.01;
         this.receivers = config.receivers || [];
         this.emitters = config.emitters || [];
+        this.currentFlow = 0;
         
-        // Store the original config object for later updates
-        this.originalConfig = config;
-        
-        // Load current flow from context or config
-        var contextFlow = this.context().get('currentFlow');
-        if (contextFlow !== undefined) {
-            this.currentFlow = parseFloat(contextFlow);
-            this.originalConfig.currentFlow = this.currentFlow;
+        // Restore flow state from context if available
+        var flowState = this.context().get('flowState');
+        if (flowState) {
+            this.currentFlow = flowState;
+            updateStatus();
         } else {
-            this.currentFlow = parseFloat(config.currentFlow) || 0;
-            this.originalConfig.currentFlow = this.currentFlow;
+            // Initialize with no flow
+            updateStatus();
         }
-        
-        // Set the initial status
-        updateNodeStatus(node);
-        
-        node.on("input", function(msg) {
-            // Clone the msg to avoid modifying the original
-            var newMsg = RED.util.cloneMessage(msg);
-            
-            if (newMsg.payload && newMsg.payload.flowCommand === "initiateFlow") {
-                // This is a flow initiation command from a Flow node
-                handleFlowCommand(node, newMsg);
-            } else if (newMsg.payload && newMsg.payload.flowCommand === "propagateFlow") {
-                // This is a flow propagation from another pipe
-                handlePropagatedFlow(node, newMsg);
+
+        // Function to update node status based on flow
+        function updateStatus() {
+            if (node.currentFlow > 0) {
+                node.status({fill:"blue", shape:"dot", text:"Flow: " + node.currentFlow.toFixed(2)});
             } else {
-                // This is a normal message, add flow information to the payload
-                newMsg.payload = {
+                node.status({fill:"grey", shape:"ring", text:"No flow"});
+            }
+        }
+
+        node.on("input", function(msg) {
+            // Check if this is a flow command
+            if (msg.payload && msg.payload.command) {
+                switch(msg.payload.command) {
+                    case "initiateFlow":
+                        // Set the flow value from the flow node
+                        node.currentFlow = parseFloat(msg.payload.flowValue) || 0;
+                        // Store flow state in context
+                        node.context().set('flowState', node.currentFlow);
+                        // Update status
+                        updateStatus();
+                        
+                        // Get connected pipe nodes
+                        var wires = node.wires[0];
+                        var connectedPipes = [];
+                        
+                        if (wires && wires.length > 0) {
+                            // Get all connected pipe nodes
+                            wires.forEach(function(id) {
+                                var connectedNode = RED.nodes.getNode(id);
+                                if (connectedNode && connectedNode.type === "pipe") {
+                                    connectedPipes.push(connectedNode);
+                                }
+                            });
+                            
+                            // If there are connected pipe nodes, distribute flow based on r^4
+                            if (connectedPipes.length > 0) {
+                                // Calculate total r^4 for all connected pipes
+                                var totalR4 = 0;
+                                
+                                connectedPipes.forEach(function(pipeNode) {
+                                    var radius = parseFloat(pipeNode.radius) || 0.01;
+                                    totalR4 += Math.pow(radius, 4);
+                                });
+                                
+                                // Distribute flow proportionally to r^4
+                                connectedPipes.forEach(function(pipeNode) {
+                                    var radius = parseFloat(pipeNode.radius) || 0.01;
+                                    var r4Ratio = Math.pow(radius, 4) / totalR4;
+                                    var distributedFlow = node.currentFlow * r4Ratio;
+                                    
+                                    // Send propagateFlow command to connected pipe
+                                    pipeNode.receive({
+                                        payload: {
+                                            command: "propagateFlow",
+                                            flowValue: distributedFlow
+                                        }
+                                    });
+                                });
+                            }
+                        }
+                        break;
+                        
+                    case "propagateFlow":
+                        // Get the incoming flow value
+                        var incomingFlow = parseFloat(msg.payload.flowValue) || 0;
+                        
+                        // Set the flow value
+                        node.currentFlow = incomingFlow;
+                        
+                        // Store flow state in context
+                        node.context().set('flowState', node.currentFlow);
+                        
+                        // Update status
+                        updateStatus();
+                        
+                        // Get connected pipe nodes
+                        var wires = node.wires[0];
+                        var connectedPipes = [];
+                        
+                        if (wires && wires.length > 0) {
+                            // Get all connected pipe nodes
+                            wires.forEach(function(id) {
+                                var connectedNode = RED.nodes.getNode(id);
+                                if (connectedNode && connectedNode.type === "pipe") {
+                                    connectedPipes.push(connectedNode);
+                                }
+                            });
+                            
+                            // If there are connected pipe nodes, distribute flow based on r^4
+                            if (connectedPipes.length > 0) {
+                                // Calculate total r^4 for all connected pipes
+                                var totalR4 = 0;
+                                
+                                connectedPipes.forEach(function(pipeNode) {
+                                    var radius = parseFloat(pipeNode.radius) || 0.01;
+                                    totalR4 += Math.pow(radius, 4);
+                                });
+                                
+                                // Distribute flow proportionally to r^4
+                                connectedPipes.forEach(function(pipeNode) {
+                                    var radius = parseFloat(pipeNode.radius) || 0.01;
+                                    var r4Ratio = Math.pow(radius, 4) / totalR4;
+                                    var distributedFlow = node.currentFlow * r4Ratio;
+                                    
+                                    // Send propagateFlow command to connected pipe
+                                    pipeNode.receive({
+                                        payload: {
+                                            command: "propagateFlow",
+                                            flowValue: distributedFlow
+                                        }
+                                    });
+                                });
+                            }
+                        }
+                        break;
+                        
+                    default:
+                        // Pass through other messages
+                        node.send(msg);
+                }
+            } else {
+                // Default behavior - pass through the message with pipe properties
+                msg.payload = {
                     name: node.name,
                     length: node.length,
                     radius: node.radius,
-                    currentFlow: node.currentFlow,
                     receivers: node.receivers,
-                    emitters: node.emitters
+                    emitters: node.emitters,
+                    currentFlow: node.currentFlow
                 };
-                node.send(newMsg);
+                node.send(msg);
             }
-        });
-        
-        // Save flow value when node is closed or redeployed
-        node.on('close', function() {
-            // Save current flow to context
-            node.context().set('currentFlow', node.currentFlow);
-            
-            // Update the original config object
-            if (node.originalConfig) {
-                node.originalConfig.currentFlow = node.currentFlow;
-            }
-        });
-    }
-    
-    // Function to handle flow commands from Flow nodes
-    function handleFlowCommand(node, msg) {
-        // Set the current flow to the value from the Flow node
-        node.currentFlow = msg.payload.flowRate;
-        
-        // Log the current flow for debugging
-        node.warn("handleFlowCommand - currentFlow: " + node.currentFlow);
-        
-        // Save the current flow to node configuration and context
-        saveFlowToConfig(node);
-        
-        // Update the node status to reflect the new flow
-        updateNodeStatus(node);
-        
-        // Propagate the flow to connected pipes
-        propagateFlow(node);
-    }
-    
-    // Function to handle propagated flow from other pipes
-    function handlePropagatedFlow(node, msg) {
-        // Update the current flow with the propagated value
-        node.currentFlow = msg.payload.flowRate;
-        
-        // Log the current flow for debugging
-        node.warn("handlePropagatedFlow - currentFlow: " + node.currentFlow);
-        
-        // Save the current flow to node configuration and context
-        saveFlowToConfig(node);
-        
-        // Update the node status
-        updateNodeStatus(node);
-        
-        // Continue propagating the flow
-        propagateFlow(node);
-    }
-    
-    // Function to save flow value to node configuration and context
-    function saveFlowToConfig(node) {
-        // Save to context for persistence across restarts
-        node.context().set('currentFlow', node.currentFlow);
-        
-        // Update the original config object
-        if (node.originalConfig) {
-            node.originalConfig.currentFlow = node.currentFlow;
-        }
-    }
-    
-    // Function to propagate flow to connected pipes
-    function propagateFlow(node) {
-        // Find all nodes connected to this node's output
-        var wires = node.wires[0]; // Get array of connected node IDs
-        
-        if (!wires || wires.length === 0) {
-            // No connected pipes, flow stops here
-            return;
-        }
-        
-        // Get all connected nodes
-        var connectedNodes = [];
-        wires.forEach(function(nodeId) {
-            var connectedNode = RED.nodes.getNode(nodeId);
-            if (connectedNode && connectedNode.type === "pipe") {
-                connectedNodes.push(connectedNode);
-            }
-        });
-        
-        if (connectedNodes.length === 0) {
-            // No connected pipes, flow stops here
-            return;
-        }
-        
-        // Calculate the sum of the fourth powers of pipe radii
-        var totalR4 = 0;
-        connectedNodes.forEach(function(connectedNode) {
-            var radius = parseFloat(connectedNode.radius) || 0.01;
-            totalR4 += Math.pow(radius, 4);
+
         });
         
         // Distribute flow proportionally to the fourth power of radius
