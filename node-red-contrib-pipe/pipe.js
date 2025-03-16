@@ -153,8 +153,44 @@ module.exports = function(RED) {
                 };
                 node.send(msg);
             }
+
+        });
+        
+        // Distribute flow proportionally to the fourth power of radius
+        connectedNodes.forEach(function(connectedNode) {
+            var radius = parseFloat(connectedNode.radius) || 0.01;
+            var r4 = Math.pow(radius, 4);
+            var flowRatio = r4 / totalR4;
+            var distributedFlow = node.currentFlow * flowRatio;
+            
+            // Send flow to connected pipe
+            connectedNode.receive({
+                payload: {
+                    flowCommand: "propagateFlow",
+                    flowRate: distributedFlow,
+                    parentNodeId: node.id
+                }
+            });
         });
     }
-
+    
+    // Function to update the node status with current flow information
+    function updateNodeStatus(node) {
+        if (node.currentFlow > 0) {
+            node.status({
+                fill: "blue",
+                shape: "dot",
+                text: "Flow: " + node.currentFlow.toFixed(2)
+            });
+        } else {
+            node.status({
+                fill: "gray",
+                shape: "ring",
+                text: "No flow"
+            });
+        }
+    }
+    
+    // Register the node type with Node-RED
     RED.nodes.registerType("pipe", PipeNode);
 };
