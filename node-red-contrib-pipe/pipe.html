@@ -6,7 +6,6 @@
       name: { value: "" },
       length: { value: "0.1", validate: RED.validators.number() },
       radius: { value: "0.01", validate: RED.validators.number() },
-      currentFlow: { value: 0 },
       receivers: { value: [] },
       emitters: { value: [] },
     },
@@ -62,18 +61,10 @@
         label: "Emitters",
       });
 
-      tabs.addTab({
-        id: "pipe-tab-flow",
-        label: "Flow",
-      });
-
       // Show the first tab (General) by default
       setTimeout(function () {
         tabs.activateTab("pipe-tab-general");
       }, 100);
-
-      // Set current flow display in the input field
-      $("#node-input-currentFlow").val(this.currentFlow || "0");
 
       // RECEIVERS SECTION
       function refreshReceiversUI() {
@@ -326,9 +317,6 @@
         emitters.push(emitter);
       });
 
-      // Get the current flow value
-      this.currentFlow = parseFloat($("#node-input-currentFlow").val()) || 0;
-
       // Set the properties on the node
       this.receivers = receivers;
       this.emitters = emitters;
@@ -363,18 +351,9 @@
         >
         <input type="text" id="node-input-radius" />
       </div>
-    </div>
-
-    <!-- Flow Tab -->
-    <div id="pipe-tab-flow" style="display:none;">
-      <div class="form-row">
-        <label for="node-input-currentFlow"><i class="fa fa-tint"></i> Current Flow</label>
-        <input type="text" id="node-input-currentFlow" />
-      </div>
       <div class="form-row">
         <p>
-          This value is updated automatically during flow simulation and is
-          preserved during export/import.
+          The flow value will be displayed in the node status when flow is active.
         </p>
       </div>
     </div>
@@ -426,10 +405,6 @@
     <dt>Radius <span class="property-type">number</span></dt>
     <dd>
       Radius of the pipe (in arbitrary units) - determines flow distribution
-    </dd>
-    <dt>Current Flow <span class="property-type">number</span></dt>
-    <dd>
-      The current flow rate through this pipe (preserved during export/import)
     </dd>
   </dl>
 

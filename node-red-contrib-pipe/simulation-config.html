@@ -1,0 +1,148 @@
+<script type="text/javascript">
+    RED.nodes.registerType('simulation-config', {
+        category: 'Custom',
+        color: '#C0DEED',
+        defaults: {
+            name: { value: "Simulation Configuration" },
+            outputResults: { value: false },
+            graphicsOn: { value: true },
+            mode: { value: 1 },
+            timeToRun: { value: 500, validate: RED.validators.number() },
+            dt: { value: 0.01, validate: RED.validators.number() },
+            iterationsPerFrame: { value: 10, validate: RED.validators.number() },
+            diffusionCoefficient: { value: 7.94e-11, validate: RED.validators.number() },
+            graphicsZoomMultiplier: { value: 1e+03, validate: RED.validators.number() }
+        },
+        inputs: 0,
+        outputs: 0,
+        icon: "font-awesome/fa-cogs",
+        label: function() {
+            return this.name || "Simulation Configuration";
+        },
+        oneditprepare: function() {
+            // Set up spinners for numeric inputs
+            $("#node-input-timeToRun").spinner({
+                min: 1,
+                step: 1
+            });
+            
+            $("#node-input-dt").spinner({
+                min: 0.0001,
+                step: 0.001
+            });
+            
+            $("#node-input-iterationsPerFrame").spinner({
+                min: 1,
+                step: 1
+            });
+            
+            $("#node-input-diffusionCoefficient").spinner({
+                step: 1e-12
+            });
+            
+            $("#node-input-graphicsZoomMultiplier").spinner({
+                min: 1,
+                step: 10
+            });
+            
+            // Update mode description when mode changes
+            $("#node-input-mode").on("change", function() {
+                var mode = $(this).val();
+                if (mode == "0") {
+                    $("#mode-description").text("Single simulation");
+                } else {
+                    $("#mode-description").text("Simulation network (cylinder boundary)");
+                }
+            });
+            
+            // Trigger initial mode description
+            $("#node-input-mode").trigger("change");
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="simulation-config">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+    
+    <div class="form-row">
+        <label for="node-input-outputResults"><i class="fa fa-file-text-o"></i> Output Results</label>
+        <input type="checkbox" id="node-input-outputResults" style="display:inline-block; width:auto; vertical-align:top;">
+    </div>
+    
+    <div class="form-row">
+        <label for="node-input-graphicsOn"><i class="fa fa-image"></i> Graphics On</label>
+        <input type="checkbox" id="node-input-graphicsOn" style="display:inline-block; width:auto; vertical-align:top;">
+    </div>
+    
+    <div class="form-row">
+        <label for="node-input-mode"><i class="fa fa-sliders"></i> Mode</label>
+        <select id="node-input-mode" style="width:70%;">
+            <option value="0">0 - Single simulation</option>
+            <option value="1">1 - Simulation network</option>
+        </select>
+        <div class="form-tips" id="mode-description" style="margin-left:105px;"></div>
+    </div>
+    
+    <div class="form-row">
+        <label for="node-input-timeToRun"><i class="fa fa-clock-o"></i> Time To Run</label>
+        <input type="text" id="node-input-timeToRun" placeholder="500">
+    </div>
+    
+    <div class="form-row">
+        <label for="node-input-dt"><i class="fa fa-step-forward"></i> DT</label>
+        <input type="text" id="node-input-dt" placeholder="0.01">
+    </div>
+    
+    <div class="form-row">
+        <label for="node-input-iterationsPerFrame"><i class="fa fa-repeat"></i> Iterations Per Frame</label>
+        <input type="text" id="node-input-iterationsPerFrame" placeholder="10">
+    </div>
+    
+    <div class="form-row">
+        <label for="node-input-diffusionCoefficient"><i class="fa fa-random"></i> Diffusion Coefficient (D)</label>
+        <input type="text" id="node-input-diffusionCoefficient" placeholder="7.94e-11">
+    </div>
+    
+    <div class="form-row">
+        <label for="node-input-graphicsZoomMultiplier"><i class="fa fa-search-plus"></i> Graphics Zoom Multiplier</label>
+        <input type="text" id="node-input-graphicsZoomMultiplier" placeholder="1e+03">
+    </div>
+</script>
+
+<script type="text/html" data-help-name="simulation-config">
+    <p>A node for configuring simulation parameters.</p>
+    <p>This node doesn't connect to other nodes but serves as a configuration container for simulation settings.</p>
+    
+    <h3>Properties</h3>
+    <dl class="message-properties">
+        <dt>Name <span class="property-type">string</span></dt>
+        <dd>Name of the configuration node</dd>
+        
+        <dt>Output Results <span class="property-type">boolean</span></dt>
+        <dd>Whether to output simulation results</dd>
+        
+        <dt>Graphics On <span class="property-type">boolean</span></dt>
+        <dd>Whether to enable graphics visualization</dd>
+        
+        <dt>Mode <span class="property-type">number</span></dt>
+        <dd>0 for single simulation, 1 for simulation network (cylinder boundary)</dd>
+        
+        <dt>Time To Run <span class="property-type">number</span></dt>
+        <dd>Total simulation time</dd>
+        
+        <dt>DT <span class="property-type">number</span></dt>
+        <dd>Time step for simulation</dd>
+        
+        <dt>Iterations Per Frame <span class="property-type">number</span></dt>
+        <dd>Number of simulation iterations per graphics frame</dd>
+        
+        <dt>Diffusion Coefficient <span class="property-type">number</span></dt>
+        <dd>Diffusion coefficient (D) for the simulation</dd>
+        
+        <dt>Graphics Zoom Multiplier <span class="property-type">number</span></dt>
+        <dd>Zoom multiplier for graphics visualization</dd>
+    </dl>
+</script>

@@ -5,7 +5,8 @@
     "node-red": {
         "nodes": {
             "pipe": "pipe.js",
-            "flow": "flow.js"
+            "flow": "flow.js",
+            "simulation-config": "simulation-config.js"
         }
     },
     "dependencies": {}

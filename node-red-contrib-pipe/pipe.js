@@ -9,12 +9,14 @@ module.exports = function(RED) {
         this.radius = parseFloat(config.radius) || 0.01;
         this.receivers = config.receivers || [];
         this.emitters = config.emitters || [];
-        this.currentFlow = 0;
+        
+        // Flow value variable (not stored as a node property)
+        var flowValue = 0;
         
         // Restore flow state from context if available
         var flowState = this.context().get('flowState');
         if (flowState) {
-            this.currentFlow = flowState;
+            flowValue = flowState;
             updateStatus();
         } else {
             // Initialize with no flow
@@ -23,8 +25,8 @@ module.exports = function(RED) {
 
         // Function to update node status based on flow
         function updateStatus() {
-            if (node.currentFlow > 0) {
-                node.status({fill:"blue", shape:"dot", text:"Flow: " + node.currentFlow.toFixed(2)});
+            if (flowValue > 0) {
+                node.status({fill:"blue", shape:"dot", text:"Flow: " + flowValue.toFixed(2)});
             } else {
                 node.status({fill:"grey", shape:"ring", text:"No flow"});
             }
@@ -36,9 +38,9 @@ module.exports = function(RED) {
                 switch(msg.payload.command) {
                     case "initiateFlow":
                         // Set the flow value from the flow node
-                        node.currentFlow = parseFloat(msg.payload.flowValue) || 0;
+                        flowValue = parseFloat(msg.payload.flowValue) || 0;
                         // Store flow state in context
-                        node.context().set('flowState', node.currentFlow);
+                        node.context().set('flowState', flowValue);
                         // Update status
                         updateStatus();
                         
@@ -69,7 +71,7 @@ module.exports = function(RED) {
                                 connectedPipes.forEach(function(pipeNode) {
                                     var radius = parseFloat(pipeNode.radius) || 0.01;
                                     var r4Ratio = Math.pow(radius, 4) / totalR4;
-                                    var distributedFlow = node.currentFlow * r4Ratio;
+                                    var distributedFlow = flowValue * r4Ratio;
                                     
                                     // Send propagateFlow command to connected pipe
                                     pipeNode.receive({
@@ -88,10 +90,10 @@ module.exports = function(RED) {
                         var incomingFlow = parseFloat(msg.payload.flowValue) || 0;
                         
                         // Set the flow value
-                        node.currentFlow = incomingFlow;
+                        flowValue = incomingFlow;
                         
                         // Store flow state in context
-                        node.context().set('flowState', node.currentFlow);
+                        node.context().set('flowState', flowValue);
                         
                         // Update status
                         updateStatus();
@@ -123,7 +125,7 @@ module.exports = function(RED) {
                                 connectedPipes.forEach(function(pipeNode) {
                                     var radius = parseFloat(pipeNode.radius) || 0.01;
                                     var r4Ratio = Math.pow(radius, 4) / totalR4;
-                                    var distributedFlow = node.currentFlow * r4Ratio;
+                                    var distributedFlow = flowValue * r4Ratio;
                                     
                                     // Send propagateFlow command to connected pipe
                                     pipeNode.receive({
@@ -149,7 +151,7 @@ module.exports = function(RED) {
                     radius: node.radius,
                     receivers: node.receivers,
                     emitters: node.emitters,
-                    currentFlow: node.currentFlow
+                    currentFlow: flowValue // Include current flow value in the payload
                 };
                 node.send(msg);
             }
