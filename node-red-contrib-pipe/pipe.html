@@ -35,7 +35,7 @@
       };
 
       // Define emitter properties
-      var emitterProperties = ["z", "r", "theta", "emitter_pattern"];
+      var emitterProperties = ["z", "r", "theta", "emitter_pattern", "emitter_pattern_type"];
 
       // Create tabs
       var tabs = RED.tabs.create({
@@ -211,25 +211,58 @@
               "</label>"
           ).appendTo(propContainer);
 
-          var inputType = prop === "emitter_pattern" ? "textarea" : "input";
-          var input = $(
-            "<" +
-              inputType +
-              ' type="text" style="width:' +
-              (prop === "emitter_pattern" ? "400px" : "120px") +
-              ";" +
-              (prop === "emitter_pattern" ? "height:100px;" : "") +
-              '" class="emitter-prop" data-prop="' +
+          if (prop === "emitter_pattern_type") {
+            // Create dropdown for pattern type
+            var select = $(
+              '<select style="width:120px;" class="emitter-prop" data-prop="' + prop + '">' +
+              '<option value="repeat">Repeat</option>' +
+              '<option value="complete">Complete</option>' +
+              '</select>'
+            ).appendTo(propContainer);
+            
+            select.val(emitter[prop] !== undefined ? emitter[prop] : "repeat");
+            
+            // Set up change handler
+            select.on("change", function () {
+              emitter[prop] = $(this).val();
+            });
+          } else if (prop === "emitter_pattern") {
+            var input = $(
+              "<textarea" +
+              ' style="width:400px;height:100px;" class="emitter-prop" data-prop="' +
               prop +
               '">'
-          ).appendTo(propContainer);
-
-          input.val(emitter[prop] !== undefined ? emitter[prop] : "");
-
-          // Set up change handler
-          input.on("change", function () {
-            emitter[prop] = $(this).val();
-          });
+            ).appendTo(propContainer);
+            
+            input.val(emitter[prop] !== undefined ? emitter[prop] : "");
+            
+            // Add description below the pattern textarea
+            $('<div style="margin-top:5px;color:#888;font-size:12px;max-width:400px;">' +
+              'Enter comma-separated values for the emitter pattern (e.g., 10,0,3,0,0). ' +
+              'If "Repeat" is selected, the pattern will repeat (e.g., 10,0,3,0,0,10,0,3,0,0,...). ' +
+              'If "Complete" is selected, the pattern will be completed with zeros (e.g., 10,0,3,0,0,0,0,0,0,0,...) until the simulation is over.' +
+              '</div>').appendTo(propContainer);
+            
+            // Set up change handler
+            input.on("change", function () {
+              emitter[prop] = $(this).val();
+            });
+          } else {
+            var input = $(
+              "<input" +
+              ' type="text" style="width:120px;"' +
+              ' class="emitter-prop" data-prop="' +
+              prop +
+              '">'
+            ).appendTo(propContainer);
+            
+            input.val(emitter[prop] !== undefined ? emitter[prop] : "");
+            
+            // Set up change handler
+            input.on("change", function () {
+              emitter[prop] = $(this).val();
+            });
+          }
         });
       }
 
@@ -248,6 +281,8 @@
             return "Thickness";
           case "emitter_pattern":
             return "Emitter Pattern";
+          case "emitter_pattern_type":
+            return "Pattern Type";
           default:
             return prop.charAt(0).toUpperCase() + prop.slice(1);
         }
@@ -274,6 +309,7 @@
           r: "0",
           theta: "0",
           emitter_pattern: "",
+          emitter_pattern_type: "repeat"
         });
         refreshEmittersUI();
       });

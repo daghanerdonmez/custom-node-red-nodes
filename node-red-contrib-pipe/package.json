@@ -6,7 +6,8 @@
         "nodes": {
             "pipe": "pipe.js",
             "flow": "flow.js",
-            "simulation-config": "simulation-config.js"
+            "simulation-config": "simulation-config.js",
+            "sink": "sink.js"
         }
     },
     "dependencies": {}
